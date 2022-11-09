@@ -1,4 +1,4 @@
-﻿namespace CandleSop.Service.Catalog.API.Model;
+﻿namespace CandleShop.Services.Catalog.API.Model;
 
 public class CatalogItem
 {

@@ -13,9 +13,14 @@ public class CatalogContext : DbContext
         _configuration = configuration;
     }
 
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        builder.ApplyConfiguration(new CatalogCategoryEntityTypeConfiguration());
+        builder.ApplyConfiguration(new CatalogItemEntityTypeConfiguration());
+    }
+
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
         options.UseSqlite(_configuration.GetConnectionString("WebApiDatabase"));
     }
-
 }

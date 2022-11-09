@@ -1,5 +1,3 @@
-using CandleSop.Service.Catalog.API.Model;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

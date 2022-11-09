@@ -1,6 +1,4 @@
-﻿using System.Runtime;
-
-namespace CandleShop.Services.Catalog.API.Controllers;
+﻿namespace CandleShop.Services.Catalog.API.Controllers;
 
 [Route("api/v1/[controller]")]
 [ApiController]
@@ -8,10 +6,8 @@ public class CatalogController : ControllerBase
 {
     private readonly CatalogContext _catalogContext;
 
-    public CatalogController(CatalogContext context)
-    {
-        _catalogContext = context ?? throw new ArgumentNullException(nameof(context));
-    }
+    public CatalogController(CatalogContext context) 
+        => _catalogContext = context ?? throw new ArgumentNullException(nameof(context));
 
     [HttpGet]
     [Route("categories/{id:int}")]
@@ -21,16 +17,12 @@ public class CatalogController : ControllerBase
     public async Task<ActionResult<CatalogCategory>> CategoryByIdAsync(int id)
     {
         if (id <= 0)
-        {
             return BadRequest();
-        }
 
         var category = await _catalogContext.CatalogCategories.SingleOrDefaultAsync(ci => ci.Id == id);
 
         if (category != null)
-        {
             return category;
-        }
 
         return NotFound();
     }
@@ -44,15 +36,15 @@ public class CatalogController : ControllerBase
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest(new { Message = "Название категории не должно быть пустым." });
 
-        var category = new CatalogCategory
+        var catalogCategory = new CatalogCategory
         {
             Name = name
         };
 
-        _catalogContext.CatalogCategories.Add(category);
+        _catalogContext.CatalogCategories.Add(catalogCategory);
 
         await _catalogContext.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(CategoryByIdAsync), new { id = category.Id }, null);
+        return CreatedAtAction(nameof(CategoryByIdAsync), new { id = catalogCategory.Id }, null);
     }
 }

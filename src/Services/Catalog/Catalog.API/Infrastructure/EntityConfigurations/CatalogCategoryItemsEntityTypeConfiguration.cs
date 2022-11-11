@@ -15,10 +15,6 @@ public class CatalogCategoryItemsEntityTypeConfiguration : IEntityTypeConfigurat
             .IsRequired(true)
             .HasMaxLength(50);
 
-        builder.HasOne(cci => cci.ParentCategory)
-            .WithMany(cc => cc.SubcategoriesItems)
-            .HasForeignKey(cci => cci.ParentCategoryId);
-
         builder.HasMany(cci => cci.CatalogItems)
             .WithOne(ci => ci.CatalogCategoryItems)
             .HasForeignKey(ci => ci.CatalogCategoryItemsId);

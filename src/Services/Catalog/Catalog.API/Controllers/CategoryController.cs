@@ -12,6 +12,28 @@ public class CategoryController : ControllerBase
     #region GET
 
     [HttpGet]
+    [Route("categories/all")]
+    [ProducesResponseType(typeof(CatalogCategory), (int)HttpStatusCode.OK)]
+    public async Task<ActionResult<CatalogCategory>> AllCategoriesAsync()
+    {
+        var categories = await _catalogContext.CatalogCategories.ToDictionaryAsync(cc => cc.Id, cc => cc);
+        var categoriesItems = await _catalogContext.CatalogCategoriesItems.ToArrayAsync();
+
+        foreach (var categoryItems in categoriesItems)
+            categories[categoryItems.ParentCategoryId].SubcategoriesItems.Add(categoryItems);
+
+        CatalogCategory baseCategory = null!;
+
+        foreach(var category in categories)
+            if (category.Value.ParentCategoryId == null)
+                baseCategory = category.Value;
+            else
+                categories[(int)category.Value.ParentCategoryId].Subcategories.Add(category.Value);
+
+        return baseCategory!;
+    }
+
+    [HttpGet]
     [Route("category/{id:int}")]
     [ProducesResponseType((int)HttpStatusCode.NotFound)]
     [ProducesResponseType((int)HttpStatusCode.BadRequest)]
@@ -21,12 +43,10 @@ public class CategoryController : ControllerBase
         if (id <= 0)
             return BadRequest();
 
-        var category = await _catalogContext.CatalogCategories.SingleOrDefaultAsync(cc => cc.Id == id);
+        var category = await _catalogContext.CatalogCategories
+            .SingleOrDefaultAsync(cc => cc.Id == id);
 
-        if (category != null)
-            return category;
-
-        return NotFound();
+        return category != null ? category : NotFound();
     }
 
     [HttpGet]
@@ -39,12 +59,10 @@ public class CategoryController : ControllerBase
         if (id <= 0)
             return BadRequest();
 
-        var catalogCategoryItems = await _catalogContext.CatalogCategoriesItems.SingleOrDefaultAsync(cci => cci.Id == id);
+        var categoryItems = await _catalogContext.CatalogCategoriesItems
+            .SingleOrDefaultAsync(cci => cci.Id == id);
 
-        if (catalogCategoryItems != null)
-            return catalogCategoryItems;
-
-        return NotFound();
+        return categoryItems != null ? categoryItems : NotFound();
     }
 
     #endregion
@@ -69,8 +87,7 @@ public class CategoryController : ControllerBase
             ParentCategoryId = category.ParentId
         };
 
-        _catalogContext.CatalogCategories.Add(catalogCategory);
-
+        await _catalogContext.CatalogCategories.AddAsync(catalogCategory);
         await _catalogContext.SaveChangesAsync();
 
         return CreatedAtAction(nameof(CategoryByIdAsync), new { id = catalogCategory.Id }, null);
@@ -94,8 +111,7 @@ public class CategoryController : ControllerBase
             ParentCategoryId = category.ParentId
         };
 
-        _catalogContext.CatalogCategoriesItems.Add(catalogCategoryItems);
-
+        await _catalogContext.CatalogCategoriesItems.AddAsync(catalogCategoryItems);
         await _catalogContext.SaveChangesAsync();
 
         return CreatedAtAction(nameof(CategoryItemsByIdAsync), new { id = catalogCategoryItems.Id }, null);

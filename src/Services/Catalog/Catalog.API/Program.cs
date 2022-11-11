@@ -18,7 +18,7 @@ var app = builder.Build();
 
 using (var client = new CatalogContext(app.Configuration))
 {
-    client.Database.EnsureDeleted();
+    // client.Database.EnsureDeleted();
     client.Database.EnsureCreated();
 
     if (client.CatalogCategories.SingleOrDefault(cc => cc.ParentCategoryId == null) == null)

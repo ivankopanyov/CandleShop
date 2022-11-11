@@ -8,5 +8,5 @@ public class CatalogItem
 
     public int CatalogCategoryItemsId { get; set; }
 
-    public CatalogCategoryItems CatalogCategoryItems { get; set; }
+    public virtual CatalogCategoryItems CatalogCategoryItems { get; set; }
 }

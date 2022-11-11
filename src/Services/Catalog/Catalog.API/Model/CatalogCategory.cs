@@ -8,7 +8,13 @@ public class CatalogCategory
 
     public int? ParentCategoryId { get; set; }
 
-    public ICollection<CatalogCategory> Subcategories { get; set; }
+    public virtual ICollection<CatalogCategory> Subcategories { get; set; }
 
-    public ICollection<CatalogCategoryItems> SubcategoriesItems { get; set; }
+    public virtual ICollection<CatalogCategoryItems> SubcategoriesItems { get; set; }
+
+    public CatalogCategory()
+    {
+        Subcategories = new HashSet<CatalogCategory>();
+        SubcategoriesItems = new HashSet<CatalogCategoryItems>();
+    }
 }

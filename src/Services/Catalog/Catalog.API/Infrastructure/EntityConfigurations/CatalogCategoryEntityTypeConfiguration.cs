@@ -20,7 +20,7 @@ class CatalogCategoryEntityTypeConfiguration : IEntityTypeConfiguration<CatalogC
             .HasForeignKey(cc => cc.ParentCategoryId);
 
         builder.HasMany(cc => cc.SubcategoriesItems)
-            .WithOne(cci => cci.ParentCategory)
+            .WithOne()
             .HasForeignKey(cci => cci.ParentCategoryId);
     }
 }

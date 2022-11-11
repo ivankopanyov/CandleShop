@@ -8,7 +8,10 @@ public class CatalogCategoryItems
 
     public int ParentCategoryId { get; set; }
 
-    public CatalogCategory ParentCategory { get; set; }
+    public virtual ICollection<CatalogItem> CatalogItems { get; set; }
 
-    public ICollection<CatalogItem> CatalogItems { get; set; }
+    public CatalogCategoryItems()
+    {
+        CatalogItems = new HashSet<CatalogItem>();
+    }
 }

@@ -13,8 +13,8 @@ class CatalogItemEntityTypeConfiguration : IEntityTypeConfiguration<CatalogItem>
             .IsRequired(true)
             .HasMaxLength(50);
 
-        builder.HasOne(ci => ci.CatalogCategory)
-            .WithMany()
-            .HasForeignKey(ci => ci.CatalogCategoryId);
+        builder.HasOne(ci => ci.CatalogCategoryItems)
+            .WithMany(cci => cci.CatalogItems)
+            .HasForeignKey(ci => ci.CatalogCategoryItemsId);
     }
 }

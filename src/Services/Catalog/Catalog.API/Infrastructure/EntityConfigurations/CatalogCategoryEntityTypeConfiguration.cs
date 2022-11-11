@@ -14,5 +14,13 @@ class CatalogCategoryEntityTypeConfiguration : IEntityTypeConfiguration<CatalogC
         builder.Property(cc => cc.Name)
             .IsRequired(true)
             .HasMaxLength(50);
+
+        builder.HasMany(cc => cc.Subcategories)
+            .WithOne()
+            .HasForeignKey(cc => cc.ParentCategoryId);
+
+        builder.HasMany(cc => cc.SubcategoriesItems)
+            .WithOne(cci => cci.ParentCategory)
+            .HasForeignKey(cci => cci.ParentCategoryId);
     }
 }

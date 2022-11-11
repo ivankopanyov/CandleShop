@@ -6,7 +6,7 @@ public class CatalogItem
 
     public string Name { get; set; }
 
-    public int CatalogCategoryId { get; set; }
+    public int CatalogCategoryItemsId { get; set; }
 
-    public CatalogCategory CatalogCategory { get; set; }
+    public CatalogCategoryItems CatalogCategoryItems { get; set; }
 }

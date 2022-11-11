@@ -1,3 +1,5 @@
+using CandleShop.Services.Catalog.API.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -18,6 +20,18 @@ using (var client = new CatalogContext(app.Configuration))
 {
     client.Database.EnsureDeleted();
     client.Database.EnsureCreated();
+
+    if (client.CatalogCategories.SingleOrDefault(cc => cc.ParentCategoryId == null) == null)
+    {
+        var baseCategory = new CatalogCategory()
+        {
+            Name = "All",
+            ParentCategoryId = null
+        };
+
+        client.CatalogCategories.Add(baseCategory);
+        client.SaveChanges();
+    }
 }
 
 // Configure the HTTP request pipeline.

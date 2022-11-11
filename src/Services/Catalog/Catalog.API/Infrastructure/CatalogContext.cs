@@ -8,6 +8,8 @@ public class CatalogContext : DbContext
 
     public DbSet<CatalogCategory> CatalogCategories { get; set; }
 
+    public DbSet<CatalogCategoryItems> CatalogCategoriesItems { get; set; }
+
     public CatalogContext(IConfiguration configuration)
     {
         _configuration = configuration;
@@ -16,6 +18,7 @@ public class CatalogContext : DbContext
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.ApplyConfiguration(new CatalogCategoryEntityTypeConfiguration());
+        builder.ApplyConfiguration(new CatalogCategoryItemsEntityTypeConfiguration());
         builder.ApplyConfiguration(new CatalogItemEntityTypeConfiguration());
     }
 

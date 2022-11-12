@@ -12,7 +12,7 @@ public class CategoryController : ControllerBase
     #region GET
 
     [HttpGet]
-    [Route("categories/all")]
+    [Route("all")]
     [ProducesResponseType(typeof(CatalogCategory), (int)HttpStatusCode.OK)]
     public async Task<ActionResult<CatalogCategory>> AllCategoriesAsync()
     {
@@ -34,7 +34,7 @@ public class CategoryController : ControllerBase
     }
 
     [HttpGet]
-    [Route("category/{id:int}")]
+    [Route("{id:int}")]
     [ProducesResponseType((int)HttpStatusCode.NotFound)]
     [ProducesResponseType((int)HttpStatusCode.BadRequest)]
     [ProducesResponseType(typeof(CatalogCategory), (int)HttpStatusCode.OK)]
@@ -69,7 +69,7 @@ public class CategoryController : ControllerBase
 
     #region POST
 
-    [Route("category")]
+    [Route("add")]
     [HttpPost]
     [ProducesResponseType((int)HttpStatusCode.Created)]
     [ProducesResponseType((int)HttpStatusCode.BadRequest)]
@@ -93,7 +93,7 @@ public class CategoryController : ControllerBase
         return CreatedAtAction(nameof(CategoryByIdAsync), new { id = catalogCategory.Id }, null);
     }
 
-    [Route("categoryItems")]
+    [Route("add/categoryItems")]
     [HttpPost]
     [ProducesResponseType((int)HttpStatusCode.Created)]
     [ProducesResponseType((int)HttpStatusCode.BadRequest)]

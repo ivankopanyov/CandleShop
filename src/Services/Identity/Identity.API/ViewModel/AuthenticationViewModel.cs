@@ -1,6 +1,6 @@
 ﻿namespace CandleShop.Services.Identity.API.ViewModel;
 
-public class RegisterViewModel
+public class AuthenticationViewModel
 {
     [Required]
     public string Email { get; set; }

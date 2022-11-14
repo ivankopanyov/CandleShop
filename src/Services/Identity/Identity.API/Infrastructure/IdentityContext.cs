@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-
-namespace CandleShop.Services.Identity.API.Infrastructure;
+﻿namespace CandleShop.Services.Identity.API.Infrastructure;
 
 public class IdentityContext : IdentityDbContext<User>
 {

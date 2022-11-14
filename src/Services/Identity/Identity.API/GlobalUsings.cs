@@ -2,7 +2,12 @@
 global using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.AspNetCore.Mvc;
-global using System.Net;
+global using Microsoft.IdentityModel.Tokens;
+global using Microsoft.AspNetCore.Authentication.JwtBearer;
+global using System.ComponentModel.DataAnnotations;
+global using System.IdentityModel.Tokens.Jwt;
+global using System.Security.Claims;
+global using System.Text;
 global using CandleShop.Services.Identity.API.Infrastructure;
 global using CandleShop.Services.Identity.API.Model;
 global using CandleShop.Services.Identity.API.ViewModel;

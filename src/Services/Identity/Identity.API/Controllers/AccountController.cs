@@ -1,6 +1,4 @@
-﻿using CandleShop.Services.Identity.API.Model;
-
-namespace CandleShop.Services.Identity.API.Controllers;
+﻿namespace CandleShop.Services.Identity.API.Controllers;
 
 [Route("api/v1/identity/account")]
 [ApiController]
@@ -8,11 +6,13 @@ public class AccountController : ControllerBase
 {
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
+    private readonly ITokenCreationService _jwtService;
 
-    public AccountController(UserManager<User> userManager, SignInManager<User> signInManager)
+    public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, ITokenCreationService jwtService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _jwtService = jwtService;
     }
 
     #region POST
@@ -40,6 +40,28 @@ public class AccountController : ControllerBase
 
         user.Password = null;
         return Created("", user);
+    }
+
+    [HttpPost]
+    [Route("signin")]
+    public async Task<ActionResult<AuthenticationResponse>> SignIn(AuthenticationViewModel request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest();
+
+        var user = await _userManager.FindByNameAsync(request.Email);
+
+        if (user == null)
+            return BadRequest();
+
+        var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+
+        if (!isPasswordValid)
+            return BadRequest();
+
+        var token = _jwtService.CreateToken(user);
+
+        return Ok(token);
     }
 
     #endregion

@@ -1,4 +1,8 @@
-﻿namespace CandleShop.Services.Identity.API.Controllers;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using System.Net;
+
+namespace CandleShop.Services.Identity.API.Controllers;
 
 [Route("api/v1/identity/account")]
 [ApiController]
@@ -19,32 +23,29 @@ public class AccountController : ControllerBase
 
     [HttpPost]
     [Route("register")]
-    public async Task<IActionResult> Register(RegisterViewModel user)
+    public async Task<IActionResult> Register(RegisterViewModel registerModel)
     {
         if (!ModelState.IsValid)
-        {
             return BadRequest(ModelState);
-        }
-        var result = await _userManager.CreateAsync(
-            new User()
-            {
-                UserName = user.Email, 
-                Email = user.Email 
-            },
-            user.Password);
+
+        var user = new User()
+        {
+            UserName = registerModel.Email,
+            Email = registerModel.Email
+        };
+
+        var result = await _userManager.CreateAsync(user, registerModel.Password);
 
         if (!result.Succeeded)
-        {
             return BadRequest(result.Errors);
-        }
 
-        user.Password = null;
-        return Created("", user);
+        var token = _jwtService.CreateToken(user);
+        return Ok(token);
     }
 
     [HttpPost]
     [Route("signin")]
-    public async Task<ActionResult<AuthenticationResponse>> SignIn(AuthenticationViewModel request)
+    public async Task<ActionResult<AuthenticateResponse>> SignIn(AuthenticateRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest();
@@ -68,13 +69,13 @@ public class AccountController : ControllerBase
 
     #region GET
 
+
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "RequireAdministratorRole")]
     [HttpGet]
     [Route("all")]
-    public async Task<ActionResult<List<User>>> GetUser()
+    public async Task<ActionResult<IEnumerable<User>>> GetUsers()
     {
-        var users = await _userManager.Users.ToListAsync();
-
-        return users;
+        return await _userManager.Users.ToListAsync();
     }
 
     #endregion

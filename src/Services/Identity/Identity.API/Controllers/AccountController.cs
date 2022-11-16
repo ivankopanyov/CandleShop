@@ -1,6 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
-using System.Net;
 
 namespace CandleShop.Services.Identity.API.Controllers;
 
@@ -10,12 +8,14 @@ public class AccountController : ControllerBase
 {
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
+    private readonly RoleManager<IdentityRole> _roleManager;
     private readonly ITokenCreationService _jwtService;
 
-    public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, ITokenCreationService jwtService)
+    public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, RoleManager<IdentityRole> roleManager, ITokenCreationService jwtService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _roleManager = roleManager;
         _jwtService = jwtService;
     }
 
@@ -39,7 +39,19 @@ public class AccountController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(result.Errors);
 
-        var token = _jwtService.CreateToken(user);
+        if (await _userManager.Users.CountAsync() == 1)
+        {
+            var admin = Constants.Roles.SUPERVISOR;
+
+            if (await _roleManager.FindByNameAsync(admin) == null)
+                await _roleManager.CreateAsync(new IdentityRole(admin));
+
+            await _userManager.AddToRolesAsync(user, new string[] { admin });
+        }
+
+        var roles = _userManager.GetRolesAsync(user).Result;
+        var token = _jwtService.CreateToken(user, roles);
+
         return Ok(token);
     }
 
@@ -60,7 +72,8 @@ public class AccountController : ControllerBase
         if (!isPasswordValid)
             return BadRequest();
 
-        var token = _jwtService.CreateToken(user);
+        var roles = _userManager.GetRolesAsync(user).Result;
+        var token = _jwtService.CreateToken(user, roles);
 
         return Ok(token);
     }
@@ -69,8 +82,7 @@ public class AccountController : ControllerBase
 
     #region GET
 
-
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "RequireAdministratorRole")]
+    [Authorize(AuthenticationSchemes = "Bearer", Roles = Constants.Roles.SUPERVISOR)]
     [HttpGet]
     [Route("all")]
     public async Task<ActionResult<IEnumerable<User>>> GetUsers()

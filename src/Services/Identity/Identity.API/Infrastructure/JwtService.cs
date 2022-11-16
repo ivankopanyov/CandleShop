@@ -1,4 +1,6 @@
-﻿namespace CandleShop.Services.Identity.API.Infrastructure;
+﻿using System.Reflection.Metadata.Ecma335;
+
+namespace CandleShop.Services.Identity.API.Infrastructure;
 
 public class JwtService : ITokenCreationService
 {
@@ -11,12 +13,12 @@ public class JwtService : ITokenCreationService
         _configuration = configuration;
     }
 
-    public AuthenticateResponse CreateToken(IdentityUser user)
+    public AuthenticateResponse CreateToken(IdentityUser user, IEnumerable<string> roles)
     {
         var expiration = DateTime.UtcNow.AddMinutes(EXPIRATION_MINUTES);
 
         var token = CreateJwtToken(
-            CreateClaims(user),
+            CreateClaims(user, roles),
             CreateSigningCredentials(),
             expiration
         );
@@ -38,8 +40,9 @@ public class JwtService : ITokenCreationService
             signingCredentials: credentials
         );
 
-    private Claim[] CreateClaims(IdentityUser user) =>
-        new[] {
+    private Claim[] CreateClaims(IdentityUser user, IEnumerable<string> roles)
+    {
+        var claims = new List<Claim>() {
                 new Claim(JwtRegisteredClaimNames.Sub, _configuration["Jwt:Subject"]),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(JwtRegisteredClaimNames.Iat, DateTime.UtcNow.ToString()),
@@ -47,6 +50,12 @@ public class JwtService : ITokenCreationService
                 new Claim(ClaimTypes.Name, user.UserName),
                 new Claim(ClaimTypes.Email, user.Email)
         };
+
+        foreach (var role in roles)
+            claims.Add(new Claim(ClaimTypes.Role, role));
+
+        return claims.ToArray();
+    }
 
     private SigningCredentials CreateSigningCredentials() =>
         new SigningCredentials(

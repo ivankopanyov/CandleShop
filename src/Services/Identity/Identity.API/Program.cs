@@ -67,14 +67,19 @@ builder.Services
         };
     });
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireAdministratorRole",
+         policy => policy.RequireRole("Administrator"));
+    
+});
+
 var app = builder.Build();
 
 using (var client = new IdentityContext(app.Configuration))
 {
     client.Database.EnsureDeleted();
     client.Database.EnsureCreated();
-
-
 }
 
 // Configure the HTTP request pipeline.

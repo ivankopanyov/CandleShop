@@ -42,7 +42,7 @@ public class AccountController : ControllerBase
         if (await _userManager.Users.CountAsync() == 1)
         {
             if (await _roleManager.FindByNameAsync(administrator) == null)
-                await _roleManager.CreateAsync(new Role(administrator, 9));
+                await _roleManager.CreateAsync(new Role(administrator, 10));
 
             await _userManager.AddToRolesAsync(user, new string[] { administrator });
         }

@@ -1,17 +1,15 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿namespace CandleShop.Services.Identity.API.Controllers;
 
-namespace CandleShop.Services.Identity.API.Controllers;
-
-[Route("api/v1/identity/account")]
+[Route("api/v1/[controller]")]
 [ApiController]
 public class AccountController : ControllerBase
 {
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly RoleManager<Role> _roleManager;
     private readonly ITokenCreationService _jwtService;
 
-    public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, RoleManager<IdentityRole> roleManager, ITokenCreationService jwtService)
+    public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, RoleManager<Role> roleManager, ITokenCreationService jwtService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -39,24 +37,22 @@ public class AccountController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(result.Errors);
 
+        string administrator = "Administrator";
+
         if (await _userManager.Users.CountAsync() == 1)
         {
-            var admin = Constants.Roles.SUPERVISOR;
+            if (await _roleManager.FindByNameAsync(administrator) == null)
+                await _roleManager.CreateAsync(new Role(administrator, 9));
 
-            if (await _roleManager.FindByNameAsync(admin) == null)
-                await _roleManager.CreateAsync(new IdentityRole(admin));
-
-            await _userManager.AddToRolesAsync(user, new string[] { admin });
+            await _userManager.AddToRolesAsync(user, new string[] { administrator });
         }
-
-        var roles = _userManager.GetRolesAsync(user).Result;
-        var token = _jwtService.CreateToken(user, roles);
+        var token = await GetTokenAsync(user);
 
         return Ok(token);
     }
 
     [HttpPost]
-    [Route("signin")]
+    [Route("login")]
     public async Task<ActionResult<AuthenticateResponse>> SignIn(AuthenticateRequest request)
     {
         if (!ModelState.IsValid)
@@ -72,8 +68,7 @@ public class AccountController : ControllerBase
         if (!isPasswordValid)
             return BadRequest();
 
-        var roles = _userManager.GetRolesAsync(user).Result;
-        var token = _jwtService.CreateToken(user, roles);
+        var token = await GetTokenAsync(user);
 
         return Ok(token);
     }
@@ -82,7 +77,7 @@ public class AccountController : ControllerBase
 
     #region GET
 
-    [Authorize(AuthenticationSchemes = "Bearer", Roles = Constants.Roles.SUPERVISOR)]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "Rank9")]
     [HttpGet]
     [Route("all")]
     public async Task<ActionResult<IEnumerable<User>>> GetUsers()
@@ -91,4 +86,17 @@ public class AccountController : ControllerBase
     }
 
     #endregion
+
+    private async Task<AuthenticateResponse> GetTokenAsync(User user)
+    {
+        var rolesNamesList = await _userManager.GetRolesAsync(user);
+        var rolesNames = rolesNamesList.ToHashSet();
+        var rank = _roleManager.Roles
+            .Where(role => rolesNames.Contains(role.Name))
+            .ToArray()
+            .Select(role => role.Rank)
+            .Max();
+
+        return _jwtService.CreateToken(user, rank);
+    }
 }

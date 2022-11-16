@@ -1,22 +1,20 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿namespace CandleShop.Services.Identity.API.Controllers;
 
-namespace CandleShop.Services.Identity.API.Controllers;
-
-[Route("api/v1/identity/roles")]
+[Route("api/v1/[controller]")]
 [ApiController]
 public class RolesController : ControllerBase
 {
-    private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly RoleManager<Role> _roleManager;
 
     private readonly UserManager<User> _userManager;
 
-    public RolesController(RoleManager<IdentityRole> roleManager, UserManager<User> userManager)
+    public RolesController(RoleManager<Role> roleManager, UserManager<User> userManager)
     {
         _roleManager = roleManager;
         _userManager = userManager;
     }
 
-    [Authorize(AuthenticationSchemes = "Bearer", Roles = Constants.Roles.SUPERVISOR)]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     [HttpPost]
     [Route("add")]
     public async Task<IActionResult> CreateAsync([FromBody] string name)
@@ -24,7 +22,7 @@ public class RolesController : ControllerBase
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest();
 
-        IdentityResult result = await _roleManager.CreateAsync(new IdentityRole(name.Trim()));
+        IdentityResult result = await _roleManager.CreateAsync(new Role(name.Trim(), 1));
 
         if (!result.Succeeded)
             return BadRequest(result.Errors);
@@ -51,7 +49,7 @@ public class RolesController : ControllerBase
         return Ok(await _userManager.GetRolesAsync(user));
     }
 
-    [Authorize(AuthenticationSchemes = "Bearer", Roles = Constants.Roles.SUPERVISOR)]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     [HttpPut]
     [Route("addrole")]
     public async Task<IActionResult> AddRole(string userId, string roleId)

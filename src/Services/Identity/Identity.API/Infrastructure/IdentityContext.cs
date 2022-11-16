@@ -1,6 +1,6 @@
 ﻿namespace CandleShop.Services.Identity.API.Infrastructure;
 
-public class IdentityContext : IdentityDbContext<User>
+public class IdentityContext : IdentityDbContext<User, Role, string>
 {
     private readonly IConfiguration _configuration;
 

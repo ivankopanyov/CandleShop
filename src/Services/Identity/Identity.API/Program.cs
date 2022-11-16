@@ -1,5 +1,3 @@
-using Microsoft.OpenApi.Models;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -35,7 +33,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 builder.Services.AddEntityFrameworkSqlite().AddDbContext<IdentityContext>();
 builder.Services
-    .AddIdentity<User, IdentityRole>(options =>
+    .AddIdentity<User, Role>(options =>
     {
         options.SignIn.RequireConfirmedAccount = false;
         options.User.RequireUniqueEmail = true;
@@ -67,11 +65,13 @@ builder.Services
         };
     });
 
+builder.Services.AddSingleton<IAuthorizationHandler, MinimumRankHandler>();
+
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("RequireAdministratorRole",
-         policy => policy.RequireRole("Administrator"));
-    
+    for (int i = 10; i > 0; i--)
+        options.AddPolicy($"Rank{i}", policy =>
+            policy.Requirements.Add(new MinimumRankRequirement(i)));
 });
 
 var app = builder.Build();

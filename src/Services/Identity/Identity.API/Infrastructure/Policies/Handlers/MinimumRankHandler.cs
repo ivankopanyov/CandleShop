@@ -1,12 +1,17 @@
-﻿namespace CandleShop.Services.Identity.API.Infrastructure.Policies.Handlers;
+﻿using SQLitePCL;
+
+namespace CandleShop.Services.Identity.API.Infrastructure.Policies.Handlers;
 
 public class MinimumRankHandler : AuthorizationHandler<MinimumRankRequirement>
 {
     private readonly IConfiguration _configuration;
 
-    public MinimumRankHandler(IConfiguration configuration)
+    private readonly IdentityContext _context;
+
+    public MinimumRankHandler(IConfiguration configuration, IdentityContext context)
     {
         _configuration = configuration;
+        _context = context;
     }
 
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, MinimumRankRequirement requirement)
@@ -16,17 +21,13 @@ public class MinimumRankHandler : AuthorizationHandler<MinimumRankRequirement>
         if (roleClaim == null || !int.TryParse(roleClaim.Value, out int rank))
             return Task.CompletedTask;
 
-        if (rank >= requirement.MinimumRank)
+        var policy = _context.Policies.FirstOrDefault(p => p.Name == requirement.PolicyName);
+        if (policy == null)
+            return Task.CompletedTask;
+
+        if (rank >= policy.MinimumRank)
             context.Succeed(requirement);
 
         return Task.CompletedTask;
-    }
-
-    public static int? GetRank(Claim? roleClaim)
-    {
-        if (roleClaim == null || !int.TryParse(roleClaim.Value, out int rank))
-            return null;
-
-        return rank;
     }
 }

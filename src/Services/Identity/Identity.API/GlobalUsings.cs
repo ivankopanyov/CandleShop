@@ -10,6 +10,7 @@ global using System.ComponentModel.DataAnnotations;
 global using System.IdentityModel.Tokens.Jwt;
 global using System.Security.Claims;
 global using System.Text;
+global using System.Reflection;
 global using CandleShop.Services.Identity.API.Model;
 global using CandleShop.Services.Identity.API.Infrastructure;
 global using CandleShop.Services.Identity.API.Infrastructure.Jwt;

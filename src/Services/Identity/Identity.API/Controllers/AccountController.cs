@@ -97,7 +97,7 @@ public class AccountController : ControllerBase
 
     #region GET
 
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "Rank2")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "account/all")]
     [HttpGet]
     [Route("all")]
     public async Task<ActionResult<IEnumerable<User>>> GetUsers()
@@ -105,14 +105,10 @@ public class AccountController : ControllerBase
         return await _userManager.Users.ToArrayAsync();
     }
 
-    [Authorize(AuthenticationSchemes = "Bearer")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "account/rank")]
     [HttpGet]
     [Route("rank")]
-    public int? GetRank()
-    {
-        var roleClaim = User.FindFirst(c => c.Type == ClaimTypes.Role && c.Issuer == _configuration["Jwt:Issuer"]);
-        return roleClaim == null || !int.TryParse(roleClaim.Value, out int rank) ? null : rank;
-    }
+    public int? GetRank() => Rank;
 
     #endregion
 

@@ -2,7 +2,7 @@
 
 public class MinimumRankRequirement : IAuthorizationRequirement
 {
-    public int MinimumRank { get; init; }
+    public string PolicyName { get; init; }
 
-    public MinimumRankRequirement(int minimumRank) => MinimumRank = minimumRank;
+    public MinimumRankRequirement(string policyName) => PolicyName = policyName;
 }

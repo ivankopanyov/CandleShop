@@ -4,6 +4,8 @@ public class IdentityContext : IdentityDbContext<User, Role, string>
 {
     private readonly IConfiguration _configuration;
 
+    public DbSet<Policy> Policies { get; set; }
+
     public IdentityContext(IConfiguration configuration)
     {
         _configuration = configuration;

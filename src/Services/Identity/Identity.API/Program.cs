@@ -1,9 +1,3 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
-using System.Data.Common;
-using System.Diagnostics.Metrics;
-using System.Reflection;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -72,13 +66,21 @@ builder.Services
         };
     });
 
-builder.Services.AddSingleton<IAuthorizationHandler, MinimumRankHandler>();
+builder.Services.AddTransient<IAuthorizationHandler, MinimumRankHandler>();
+
+var policies = Assembly.GetExecutingAssembly().GetTypes()
+    .Where(type => typeof(ControllerBase).IsAssignableFrom(type))
+    .SelectMany(type => type.GetMethods())
+    .Where(method => method.IsDefined(typeof(AuthorizeAttribute)))
+    .Select(method => ((AuthorizeAttribute)method.GetCustomAttributes().First(attr => attr.GetType() == typeof(AuthorizeAttribute))).Policy)
+    .Where(policy => !policy.IsNullOrEmpty())
+    .ToHashSet();
 
 builder.Services.AddAuthorization(options =>
 {
-    for (int i = RoleSettings.MAX_RANK; i >= RoleSettings.MIN_RANK; i--)
-        options.AddPolicy($"Rank{i}", policy =>
-            policy.Requirements.Add(new MinimumRankRequirement(i)));
+    foreach (var policy in policies)
+        options.AddPolicy(policy!, p =>
+            p.Requirements.Add(new MinimumRankRequirement(policy!)));
 });
 
 var app = builder.Build();
@@ -87,6 +89,59 @@ using (var client = new IdentityContext(app.Configuration))
 {
     client.Database.EnsureDeleted();
     client.Database.EnsureCreated();
+
+    foreach (var policy in client.Policies.ToHashSet())
+        if (!policies.Contains(policy.Name))
+            client.Policies.Remove(policy);
+
+    foreach (var policy in policies)
+        if (client.Policies.FirstOrDefault(p => p.Name == policy) == null)
+            client.Policies.Add(
+                new Policy()
+                {
+                    Name = policy!,
+                    MinimumRank = 1
+                });
+
+    client.SaveChanges();
+
+    int maxRank = 0;
+    foreach (var policy in client.Policies)
+        if (policy.MinimumRank > maxRank)
+            maxRank = policy.MinimumRank;
+
+    using (var scope = app.Services.CreateScope())
+    {
+        var roleManager = (RoleManager<Role>)scope.ServiceProvider.GetService(typeof(RoleManager<Role>))!;
+        string roleName = null!;
+        if (roleManager.Roles.Count() == 0)
+        {
+            roleName = "Supervisor";
+            roleManager.CreateAsync(new Role(roleName, maxRank));
+        }
+        else
+        {
+            Role maxRole = null!;
+            foreach (var role in roleManager.Roles)
+                if (maxRole == null || role.Rank > maxRole.Rank)
+                    maxRole = role;
+
+            roleName = maxRole.Name;
+        }
+
+        var userManager = (UserManager<User>)scope.ServiceProvider.GetService(typeof(UserManager<User>))!;
+        if (userManager.Users.Count() == 0)
+        {
+            var user = new User()
+            {
+                UserName = "supervisor@candleshop.com",
+                Email = "supervisor@candleshop.com"
+            };
+
+            userManager.CreateAsync(user, "supervisor");
+            userManager.AddToRolesAsync(user, new[] { roleName });
+        }
+    }
 }
 
 // Configure the HTTP request pipeline.
@@ -103,51 +158,5 @@ app.UseCors(x => x
         .AllowAnyOrigin()
         .AllowAnyMethod()
         .AllowAnyHeader());
-
-var policies = Assembly.GetExecutingAssembly().GetTypes()
-    .Where(type => typeof(ControllerBase).IsAssignableFrom(type))
-    .SelectMany(type => type.GetMethods())
-    .Where(method => method.IsDefined(typeof(AuthorizeAttribute)))
-    .Select(method => ((AuthorizeAttribute)method.GetCustomAttributes().First(attr => attr.GetType() == typeof(AuthorizeAttribute))).Policy)
-    .Where(policy => !policy.IsNullOrEmpty())
-    .ToArray();
-
-var p = string.Join(", ", policies);
-
-
-using (var scope = app.Services.CreateScope())
-{
-    var roleManager = (RoleManager<Role>)scope.ServiceProvider.GetService(typeof(RoleManager<Role>))!;
-    string roleName = "";
-
-    if (roleManager.Roles.Count() == 0)
-        for (int i = RoleSettings.MIN_RANK; i <= RoleSettings.MAX_RANK; i++)
-        {
-            roleName = $"{RoleSettings.DEFAULT_ROLE_NAME} with rank {i}";
-            roleManager.CreateAsync(new Role(roleName, i));
-        }
-    else
-    {
-        Role maxRole = null!;
-        foreach (var role in roleManager.Roles.ToArray())
-            if (maxRole == null || role.Rank > maxRole.Rank)
-                maxRole = role;
-
-        roleName = maxRole.Name;
-    }
-
-    var userManager = (UserManager<User>)scope.ServiceProvider.GetService(typeof(UserManager<User>))!;
-    if (userManager.Users.Count() == 0)
-    {
-        var user = new User()
-        {
-            UserName = "supervisor@candleshop.com",
-            Email = "supervisor@candleshop.com"
-        };
-
-        userManager.CreateAsync(user, "supervisor");
-        userManager.AddToRolesAsync(user, new[] { roleName });
-    }
-}
 
 app.Run();

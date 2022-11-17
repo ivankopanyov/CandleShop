@@ -10,16 +10,16 @@ public class AccountController : ControllerBase
     private readonly ITokenCreationService _jwtService;
     private readonly IConfiguration _configuration;
 
-    private int? Rank
+    private int? AccessLevel
     {
         get
         {
             var roleClaim = User.FindFirst(c => c.Type == ClaimTypes.Role && c.Issuer == _configuration["Jwt:Issuer"]);
 
-            if (roleClaim == null || !int.TryParse(roleClaim.Value, out int rank))
+            if (roleClaim == null || !int.TryParse(roleClaim.Value, out int accessLevel))
                 return null;
 
-            return rank;
+            return accessLevel;
         }
     }
 
@@ -57,14 +57,16 @@ public class AccountController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(result.Errors);
 
-        var role = await _roleManager.Roles.FirstAsync(role => role.Rank == RoleSettings.MIN_RANK);
-        if (role == null)
-        {
-            role = new Role($"{RoleSettings.DEFAULT_ROLE_NAME} with rank {RoleSettings.MIN_RANK}", RoleSettings.MIN_RANK);
-            await _roleManager.CreateAsync(role);
-        }
+        var accessLevel = 0;
+        string roleName = null!;
+        foreach (var role in _roleManager.Roles)
+            if (roleName == null || role.AccessLevel < accessLevel)
+            {
+                accessLevel = role.AccessLevel;
+                roleName = role.Name;
+            }
 
-        await _userManager.AddToRolesAsync(user, new string[] { role.Name });
+        await _userManager.AddToRolesAsync(user, new string[] { roleName });
         var token = await GetTokenAsync(user);
 
         return Ok(token);
@@ -105,10 +107,10 @@ public class AccountController : ControllerBase
         return await _userManager.Users.ToArrayAsync();
     }
 
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "account/rank")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "account/accessLevel")]
     [HttpGet]
-    [Route("rank")]
-    public int? GetRank() => Rank;
+    [Route("accessLevel")]
+    public int? GetAccessLevel() => AccessLevel;
 
     #endregion
 
@@ -119,7 +121,7 @@ public class AccountController : ControllerBase
         var rank = _roleManager.Roles
             .Where(role => rolesNames.Contains(role.Name))
             .ToArray()
-            .Select(role => role.Rank)
+            .Select(role => role.AccessLevel)
             .Max();
 
         return _jwtService.CreateToken(user, rank);

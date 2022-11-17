@@ -2,9 +2,9 @@
 
 public class Role : IdentityRole
 {
-    public int Rank { get; set; }
+    public int AccessLevel { get; set; }
 
     public Role() : base() { }
 
-    public Role(string roleName, int rank) : base(roleName) => Rank = rank;
+    public Role(string roleName, int rank) : base(roleName) => AccessLevel = rank;
 }

@@ -16,3 +16,4 @@ global using CandleShop.Services.Identity.API.Infrastructure.Jwt;
 global using CandleShop.Services.Identity.API.Infrastructure.Policies.Handlers;
 global using CandleShop.Services.Identity.API.Infrastructure.Policies.Requirements;
 global using CandleShop.Services.Identity.API.ViewModel;
+global using CandleShop.Services.Identity.API.Infrastructure.Settings;

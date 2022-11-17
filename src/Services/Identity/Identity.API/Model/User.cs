@@ -2,4 +2,5 @@
 
 public class User : IdentityUser
 {
+    public int Rank { get; set; }
 }

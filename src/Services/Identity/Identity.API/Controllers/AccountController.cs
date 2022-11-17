@@ -8,13 +8,33 @@ public class AccountController : ControllerBase
     private readonly SignInManager<User> _signInManager;
     private readonly RoleManager<Role> _roleManager;
     private readonly ITokenCreationService _jwtService;
+    private readonly IConfiguration _configuration;
 
-    public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, RoleManager<Role> roleManager, ITokenCreationService jwtService)
+    private int? Rank
+    {
+        get
+        {
+            var roleClaim = User.FindFirst(c => c.Type == ClaimTypes.Role && c.Issuer == _configuration["Jwt:Issuer"]);
+
+            if (roleClaim == null || !int.TryParse(roleClaim.Value, out int rank))
+                return null;
+
+            return rank;
+        }
+    }
+
+    public AccountController(
+        UserManager<User> userManager, 
+        SignInManager<User> signInManager, 
+        RoleManager<Role> roleManager, 
+        ITokenCreationService jwtService,
+        IConfiguration configuration)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _roleManager = roleManager;
         _jwtService = jwtService;
+        _configuration = configuration;
     }
 
     #region POST
@@ -37,15 +57,14 @@ public class AccountController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(result.Errors);
 
-        string administrator = "Administrator";
-
-        if (await _userManager.Users.CountAsync() == 1)
+        var role = await _roleManager.Roles.FirstAsync(role => role.Rank == RoleSettings.MIN_RANK);
+        if (role == null)
         {
-            if (await _roleManager.FindByNameAsync(administrator) == null)
-                await _roleManager.CreateAsync(new Role(administrator, 10));
-
-            await _userManager.AddToRolesAsync(user, new string[] { administrator });
+            role = new Role($"{RoleSettings.DEFAULT_ROLE_NAME} with rank {RoleSettings.MIN_RANK}", RoleSettings.MIN_RANK);
+            await _roleManager.CreateAsync(role);
         }
+
+        await _userManager.AddToRolesAsync(user, new string[] { role.Name });
         var token = await GetTokenAsync(user);
 
         return Ok(token);
@@ -55,6 +74,7 @@ public class AccountController : ControllerBase
     [Route("login")]
     public async Task<ActionResult<AuthenticateResponse>> SignIn(AuthenticateRequest request)
     {
+
         if (!ModelState.IsValid)
             return BadRequest();
 
@@ -77,12 +97,21 @@ public class AccountController : ControllerBase
 
     #region GET
 
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "Rank9")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "Rank2")]
     [HttpGet]
     [Route("all")]
     public async Task<ActionResult<IEnumerable<User>>> GetUsers()
     {
-        return await _userManager.Users.ToListAsync();
+        return await _userManager.Users.ToArrayAsync();
+    }
+
+    [Authorize(AuthenticationSchemes = "Bearer")]
+    [HttpGet]
+    [Route("rank")]
+    public int? GetRank()
+    {
+        var roleClaim = User.FindFirst(c => c.Type == ClaimTypes.Role && c.Issuer == _configuration["Jwt:Issuer"]);
+        return roleClaim == null || !int.TryParse(roleClaim.Value, out int rank) ? null : rank;
     }
 
     #endregion

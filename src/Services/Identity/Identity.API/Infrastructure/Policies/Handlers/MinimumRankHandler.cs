@@ -21,4 +21,12 @@ public class MinimumRankHandler : AuthorizationHandler<MinimumRankRequirement>
 
         return Task.CompletedTask;
     }
+
+    public static int? GetRank(Claim? roleClaim)
+    {
+        if (roleClaim == null || !int.TryParse(roleClaim.Value, out int rank))
+            return null;
+
+        return rank;
+    }
 }

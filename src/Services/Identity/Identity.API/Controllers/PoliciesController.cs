@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Identity.API.Model.Entities;
+using Microsoft.AspNetCore.Identity;
 
 namespace CandleShop.Services.Identity.API.Controllers;
 

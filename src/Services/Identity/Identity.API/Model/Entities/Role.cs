@@ -1,4 +1,4 @@
-﻿namespace CandleShop.Services.Identity.API.Model;
+﻿namespace CandleShop.Services.Identity.API.Model.Entities;
 
 public class Role : IdentityRole
 {

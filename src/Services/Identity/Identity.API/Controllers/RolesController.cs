@@ -1,4 +1,6 @@
-﻿namespace CandleShop.Services.Identity.API.Controllers;
+﻿using Identity.API.Model.Entities;
+
+namespace CandleShop.Services.Identity.API.Controllers;
 
 [Route("api/v1/[controller]")]
 [ApiController]
@@ -37,13 +39,19 @@ public class RolesController : ControllerBase
     [Route("add")]
     public async Task<IActionResult> CreateAsync(string name, int accessLevel)
     {
+        int? access = AccessLevel;
+        if (access == null)
+            return BadRequest();
+
+        int userAccessLevel = (int)access;
+
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest();
 
         if (accessLevel <= AccessLevels.Min())
             return BadRequest();
 
-        if (accessLevel >= AccessLevel)
+        if (accessLevel >= userAccessLevel)
             return Forbid();
 
         IdentityResult result = await _roleManager.CreateAsync(new Role(name.Trim(), accessLevel));
@@ -57,7 +65,7 @@ public class RolesController : ControllerBase
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/getAll")]
     [HttpGet]
     [Route("getAll")]
-    public ActionResult<IEnumerable<Role>> GetAll()
+    public async Task<ActionResult<IEnumerable<Role>>> GetAll()
     {
         int? access = AccessLevel;
         if (access == null)
@@ -65,9 +73,16 @@ public class RolesController : ControllerBase
 
         int accessLevel = (int)access;
 
-        var roles = accessLevel == AccessLevels.Max() ?
-            _roleManager.Roles.Where(role => role.AccessLevel <= accessLevel) :
-            _roleManager.Roles.Where(role => role.AccessLevel < accessLevel);
+        IQueryable<Role> roles;
+
+        if (accessLevel == AccessLevels.Max())
+            roles = _roleManager.Roles;
+        else
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var userRoles = (await _userManager.GetRolesAsync(user)).ToHashSet();
+            roles = _roleManager.Roles.Where(role => role.AccessLevel < accessLevel || userRoles.Contains(role.Name));
+        }
 
         return Ok(roles);
     }
@@ -86,20 +101,24 @@ public class RolesController : ControllerBase
 
         int accessLevel = (int)access;
 
-        var role = accessLevel == AccessLevels.Max() ?
-            await _roleManager.Roles.FirstAsync(role => role.Id == id && role.AccessLevel <= accessLevel) :
-            await _roleManager.Roles.FirstAsync(role => role.Id == id && role.AccessLevel < accessLevel);
+        var role = await _roleManager.Roles.FirstAsync(role => role.Id == id);
 
-        if (role == null)
+        if (role == null || accessLevel < role.AccessLevel)
             return NotFound();
 
-        return Ok(role);
+        if (accessLevel == AccessLevels.Max() || accessLevel > role.AccessLevel)
+            return Ok(role);
+        
+        var user = await _userManager.GetUserAsync(User);
+        var userRoles = (await _userManager.GetRolesAsync(user)).ToHashSet();
+
+        return userRoles.Contains(role.Name) ? Ok(role) : NotFound();
     }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/findByName")]
     [HttpGet]
     [Route("findByName")]
-    public ActionResult<IEnumerable<Role>> FindByName(string name)
+    public async Task<ActionResult<IEnumerable<Role>>> FindByName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest();
@@ -110,17 +129,19 @@ public class RolesController : ControllerBase
 
         int accessLevel = (int)access;
 
-        var roles = accessLevel == AccessLevels.Max() ?
-            _roleManager.Roles.Where(role => role.Name.Contains(name) && role.AccessLevel <= accessLevel) :
-            _roleManager.Roles.Where(role => role.Name.Contains(name) && role.AccessLevel < accessLevel);
+        if (accessLevel == AccessLevels.Max())
+            return Ok(await _roleManager.Roles.Where(role => role.Name.Contains(name)).ToArrayAsync());
 
-        return Ok(roles);
+        var user = await _userManager.GetUserAsync(User);
+        var userRoles = (await _userManager.GetRolesAsync(user)).ToHashSet();
+
+        return Ok(_roleManager.Roles.Where(role => role.Name.Contains(name) && (role.AccessLevel < accessLevel || userRoles.Contains(role.Name))));
     }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/getInRange")]
     [HttpGet]
     [Route("getInRange")]
-    public ActionResult<IEnumerable<Role>> GetInRange(int min, int max)
+    public async Task<ActionResult<IEnumerable<Role>>> GetInRange(int minAccessLevel, int maxAccessLevel)
     {
         int? access = AccessLevel;
         if (access == null)
@@ -128,19 +149,29 @@ public class RolesController : ControllerBase
 
         int accessLevel = (int)access;
 
-        var roles = accessLevel == AccessLevels.Max() ?
-            _roleManager.Roles.Where(role => role.AccessLevel >= min && role.AccessLevel <= accessLevel && role.AccessLevel <= max) :
-            _roleManager.Roles.Where(role => role.AccessLevel >= min && role.AccessLevel < accessLevel && role.AccessLevel <= max);
+        int min = AccessLevels.Min();
+        if (minAccessLevel < min)
+            minAccessLevel = min;
 
-        return Ok(roles);
+        int max = AccessLevels.Max();
+        if (maxAccessLevel >= accessLevel)
+            maxAccessLevel = accessLevel == max ? accessLevel : accessLevel - 1;
+
+        if (accessLevel == max)
+            return Ok(_roleManager.Roles.Where(role => role.AccessLevel >= minAccessLevel && role.AccessLevel <= maxAccessLevel));
+
+        var user = await _userManager.GetUserAsync(User);
+        var userRoles = (await _userManager.GetRolesAsync(user)).ToHashSet();
+
+        return Ok(_roleManager.Roles.Where(role => (role.AccessLevel >= minAccessLevel && role.AccessLevel <= maxAccessLevel) || userRoles.Contains(role.Name)));
     }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/change")]
     [HttpPut]
     [Route("change")]
-    public async Task<ActionResult> ChangeAsync(string id, string newName, int newAccessLevel)
+    public async Task<ActionResult> ChangeAsync(RoleDto role)
     {
-        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(newName))
+        if (string.IsNullOrWhiteSpace(role.Id) || string.IsNullOrWhiteSpace(role.Name))
             return BadRequest();
 
         int? access = AccessLevel;
@@ -149,29 +180,79 @@ public class RolesController : ControllerBase
 
         int accessLevel = (int)access;
 
-        if (newAccessLevel <= AccessLevels.Min())
-            return BadRequest();
+        Role roleEntity = await _roleManager.Roles.FirstAsync(r => r.Id == role.Id);
 
-        if (newAccessLevel >= AccessLevel)
-            return Forbid();
-
-        var role = accessLevel == AccessLevels.Max() ?
-            await _roleManager.Roles.FirstAsync(role => role.Id == id && role.AccessLevel <= accessLevel) :
-            await _roleManager.Roles.FirstAsync(role => role.Id == id && role.AccessLevel < accessLevel);
-
-        if (role == null)
+        if (roleEntity == null)
             return NotFound();
 
-        int minAccessLevel = AccessLevels.Min();
+        int min = AccessLevels.Min();
+        int max = AccessLevels.Max();
+        IdentityResult renameResult;
 
-        if (role.AccessLevel == minAccessLevel && newAccessLevel != minAccessLevel)
+        if (roleEntity.AccessLevel == min)
+        {
+            if (roleEntity.AccessLevel != role.AccessLevel)
+                return BadRequest();
+
+            if (roleEntity.Name != role.Name && accessLevel != max)
+                return Forbid();
+
+            renameResult = await _roleManager.SetRoleNameAsync(roleEntity, role.Name);
+
+            return renameResult.Succeeded ? Ok() : BadRequest(renameResult.Errors);
+        }
+        else if (roleEntity.AccessLevel >= accessLevel)
+        {
+            if (accessLevel == max)
+            {
+                if (roleEntity.AccessLevel == max)
+                {
+                    int secondMax = min;
+                    foreach (var level in AccessLevels)
+                        if ((secondMax == min || level > secondMax) && level < max)
+                            secondMax = level;
+
+                    if (role.AccessLevel <= secondMax)
+                        return BadRequest();
+
+                    renameResult = await _roleManager.SetRoleNameAsync(roleEntity, role.Name);
+
+                    if (!renameResult.Succeeded)
+                        return BadRequest(renameResult.Errors);
+
+                    roleEntity.AccessLevel = role.AccessLevel;
+                    return Ok();
+                }
+
+                if (role.AccessLevel >= max || role.AccessLevel <= min)
+                    return BadRequest();
+
+                renameResult = await _roleManager.SetRoleNameAsync(roleEntity, role.Name);
+
+                if (!renameResult.Succeeded)
+                    return BadRequest(renameResult.Errors);
+
+                roleEntity.AccessLevel = role.AccessLevel;
+                return Ok();
+            }
+            else if (roleEntity.AccessLevel > accessLevel)
+                return NotFound();
+
+            var user = await _userManager.GetUserAsync(User);
+            var userRoles = (await _userManager.GetRolesAsync(user)).ToHashSet();
+
+            return userRoles.Contains(role.Name) ? Forbid() : NotFound();
+        }
+
+        if (role.AccessLevel >= accessLevel || role.AccessLevel <= min)
             return BadRequest();
 
-        if (role.Name != newName)
-            await _roleManager.SetRoleNameAsync(role, newName);
+        renameResult = await _roleManager.SetRoleNameAsync(roleEntity, role.Name);
 
-        role.AccessLevel = newAccessLevel;
+        if (!renameResult.Succeeded)
+            return BadRequest(renameResult.Errors);
 
+        roleEntity.AccessLevel = role.AccessLevel;
         return Ok();
     }
 

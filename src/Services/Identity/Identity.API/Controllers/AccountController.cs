@@ -1,6 +1,4 @@
-﻿using Identity.API.Model.Entities;
-
-namespace CandleShop.Services.Identity.API.Controllers;
+﻿namespace CandleShop.Services.Identity.API.Controllers;
 
 [Route("api/v1/[controller]")]
 [ApiController]

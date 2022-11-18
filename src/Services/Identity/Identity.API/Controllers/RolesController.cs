@@ -1,6 +1,4 @@
-﻿using Identity.API.Model.Entities;
-
-namespace CandleShop.Services.Identity.API.Controllers;
+﻿namespace CandleShop.Services.Identity.API.Controllers;
 
 [Route("api/v1/[controller]")]
 [ApiController]
@@ -270,7 +268,7 @@ public class RolesController : ControllerBase
 
         int accessLevel = (int)access;
 
-        var role = await _roleManager.Roles.FirstAsync(role => role.Id == id && role.AccessLevel < accessLevel);
+        var role = await _roleManager.Roles.FirstAsync(role => role.Id == id);
 
         if (role == null)
             return NotFound();
@@ -278,7 +276,26 @@ public class RolesController : ControllerBase
         if (role.AccessLevel == AccessLevels.Min())
             return BadRequest();
 
-        await _roleManager.DeleteAsync(role);
+        var max = AccessLevels.Max();
+
+        if (role.AccessLevel == max)
+            return accessLevel == max ? BadRequest() : NotFound();
+
+        if (role.AccessLevel > accessLevel)
+            return NotFound();
+
+        if (role.AccessLevel == accessLevel)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var userRoles = (await _userManager.GetRolesAsync(user)).ToHashSet();
+
+            return userRoles.Contains(role.Name) ? Forbid() : NotFound();
+        }
+
+        var result = await _roleManager.DeleteAsync(role);
+
+        if (!result.Succeeded)
+            return BadRequest(result.Errors);
 
         return Ok();
     }

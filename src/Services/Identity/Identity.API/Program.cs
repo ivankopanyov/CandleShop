@@ -1,5 +1,3 @@
-using Identity.API.Model.Entities;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -88,10 +86,10 @@ var app = builder.Build();
 
 using (var client = new IdentityContext(app.Configuration))
 {
-    //client.Database.EnsureDeleted();
+    client.Database.EnsureDeleted();
     client.Database.EnsureCreated();
 
-    foreach (var policy in client.Policies.ToHashSet())
+    foreach (var policy in client.Policies)
         if (!policies.Contains(policy.Name))
             client.Policies.Remove(policy);
 

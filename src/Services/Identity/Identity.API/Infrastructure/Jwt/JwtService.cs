@@ -11,12 +11,12 @@ public class JwtService : ITokenCreationService
         _configuration = configuration;
     }
 
-    public AuthenticateResponse CreateToken(IdentityUser user, int rank)
+    public AuthenticateResponse CreateToken(IdentityUser user)
     {
         var expiration = DateTime.UtcNow.AddMinutes(EXPIRATION_MINUTES);
 
         var token = CreateJwtToken(
-            CreateClaims(user, rank),
+            CreateClaims(user),
             CreateSigningCredentials(),
             expiration
         );
@@ -38,7 +38,7 @@ public class JwtService : ITokenCreationService
             signingCredentials: credentials
         );
 
-    private Claim[] CreateClaims(IdentityUser user, int rank)
+    private Claim[] CreateClaims(IdentityUser user)
     {
         var claims = new List<Claim>() {
                 new Claim(JwtRegisteredClaimNames.Sub, _configuration["Jwt:Subject"]),
@@ -47,7 +47,7 @@ public class JwtService : ITokenCreationService
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Name, user.UserName),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, rank.ToString())
+                new Claim(ClaimTypes.Sid, user.Id)
         };
 
         return claims.ToArray();

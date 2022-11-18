@@ -2,5 +2,5 @@
 
 public interface ITokenCreationService
 {
-    AuthenticateResponse CreateToken(IdentityUser user, int rank);
+    AuthenticateResponse CreateToken(IdentityUser user);
 }

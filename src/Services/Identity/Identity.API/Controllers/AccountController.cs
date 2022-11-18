@@ -57,17 +57,7 @@ public class AccountController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(result.Errors);
 
-        var accessLevel = 0;
-        string roleName = null!;
-        foreach (var role in _roleManager.Roles)
-            if (roleName == null || role.AccessLevel < accessLevel)
-            {
-                accessLevel = role.AccessLevel;
-                roleName = role.Name;
-            }
-
-        await _userManager.AddToRolesAsync(user, new string[] { roleName });
-        var token = await GetTokenAsync(user);
+        var token = _jwtService.CreateToken(user);
 
         return Ok(token);
     }
@@ -90,7 +80,7 @@ public class AccountController : ControllerBase
         if (!isPasswordValid)
             return BadRequest();
 
-        var token = await GetTokenAsync(user);
+        var token = _jwtService.CreateToken(user);
 
         return Ok(token);
     }
@@ -113,17 +103,4 @@ public class AccountController : ControllerBase
     public int? GetAccessLevel() => AccessLevel;
 
     #endregion
-
-    private async Task<AuthenticateResponse> GetTokenAsync(User user)
-    {
-        var rolesNamesList = await _userManager.GetRolesAsync(user);
-        var rolesNames = rolesNamesList.ToHashSet();
-        var rank = _roleManager.Roles
-            .Where(role => rolesNames.Contains(role.Name))
-            .ToArray()
-            .Select(role => role.AccessLevel)
-            .Max();
-
-        return _jwtService.CreateToken(user, rank);
-    }
 }

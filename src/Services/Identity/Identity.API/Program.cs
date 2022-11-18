@@ -112,7 +112,6 @@ using (var client = new IdentityContext(app.Configuration))
 
             userManager.CreateAsync(user, "supervisor");
             userManager.AddToRolesAsync(user, new[] { roleName });
-            roleManager.CreateAsync(new Role("Buyer", 0));
         }
         else
         {

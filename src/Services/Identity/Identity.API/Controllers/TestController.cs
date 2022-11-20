@@ -4,8 +4,13 @@
 [ApiController]
 public class TestController : IdentityController
 {
-    public TestController(UserManager<User> userManager, RoleManager<Role> roleManager, IConfiguration configuration) : 
-        base(userManager, roleManager, configuration) { }
+    private readonly IdentityContext _identityContext;
+
+    public TestController(UserManager<User> userManager, RoleManager<Role> roleManager, IConfiguration configuration, IdentityContext identityContext) : 
+        base(userManager, roleManager, configuration)
+    {
+        _identityContext = identityContext;
+    }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "test/allUsers")]
     [HttpGet]
@@ -13,6 +18,20 @@ public class TestController : IdentityController
     public async Task<ActionResult<IEnumerable<User>>> GetAllUsers()
     {
         return await _userManager.Users.ToArrayAsync();
+    }
+
+    [HttpGet]
+    [Route("users")]
+    public async Task<ActionResult<List<User>>> GetUsers(int pageSize, int pageIndex)
+    {
+        if (pageSize <= 0 || pageIndex < 0)
+            return new List<User>();
+
+        return await _userManager.Users
+            .OrderBy(x => x.Id)
+            .Skip(pageSize * pageIndex)
+            .Take(pageSize)
+            .ToListAsync();
     }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "test/allClaims")]

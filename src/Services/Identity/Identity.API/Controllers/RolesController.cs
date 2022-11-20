@@ -31,10 +31,20 @@ public class RolesController : IdentityController
         return Ok();
     }
 
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/getAll")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/items")]
     [HttpGet]
-    [Route("getAll")]
-    public async Task<List<Role>> GetAll() =>  await _roleManager.Roles.ToListAsync();
+    [Route("items")]
+    public async Task<List<Role>> ItemsAsync(int pageSize, int pageIndex)
+    {
+        if (pageSize <= 0 || pageIndex < 0)
+            return new List<Role>();
+
+        return await _roleManager.Roles
+            .OrderBy(x => x.Id)
+            .Skip(pageSize * pageIndex)
+            .Take(pageSize)
+            .ToListAsync();
+    }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/get")]
     [HttpGet]
@@ -51,19 +61,34 @@ public class RolesController : IdentityController
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/findByName")]
     [HttpGet]
     [Route("findByName")]
-    public async Task<List<Role>> FindByName(string name)
+    public async Task<List<Role>> FindByNameAsync(int pageSize, int pageIndex, string name)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (pageSize <= 0 || pageIndex < 0 || string.IsNullOrWhiteSpace(name))
             return new List<Role>();
 
-        return await _roleManager.Roles.Where(role => role.NormalizedName.Contains(name.Trim().ToUpper())).ToListAsync();
+        return await _roleManager.Roles
+            .OrderBy(x => x.Id)
+            .Where(role => role.NormalizedName.Contains(name.Trim().ToUpper()))
+            .Skip(pageSize * pageIndex)
+            .Take(pageSize)
+            .ToListAsync();
     }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/getInRange")]
     [HttpGet]
     [Route("getInRange")]
-    public async Task<List<Role>> GetInRange(int minAccessLevel, int maxAccessLevel) =>
-        await _roleManager.Roles.Where(role => role.AccessLevel >= minAccessLevel && role.AccessLevel <= maxAccessLevel).ToListAsync();
+    public async Task<List<Role>> GetInRangeAsync(int pageSize, int pageIndex, int minAccessLevel, int maxAccessLevel)
+    {
+        if (pageSize <= 0 || pageIndex < 0)
+            return new List<Role>();
+
+        return await _roleManager.Roles
+            .OrderBy(x => x.Id)
+            .Where(role => role.AccessLevel >= minAccessLevel && role.AccessLevel <= maxAccessLevel)
+            .Skip(pageSize * pageIndex)
+            .Take(pageSize)
+            .ToListAsync();
+    }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/change")]
     [HttpPut]

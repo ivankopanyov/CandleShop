@@ -11,10 +11,20 @@ public class PoliciesController : IdentityController
         _identityContext = identityContext;
     }
 
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "policies/getAll")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "policies/items")]
     [HttpGet]
-    [Route("getAll")]
-    public async Task<List<Policy>> GetAll() => await _identityContext.Policies.ToListAsync();
+    [Route("items")]
+    public async Task<List<Policy>> ItemsAsync(int pageSize, int pageIndex)
+    { 
+        if (pageSize <= 0 || pageIndex < 0)
+            return new List<Policy>();
+
+        return await _identityContext.Policies
+            .OrderBy(x => x.Id)
+            .Skip(pageSize * pageIndex)
+            .Take(pageSize)
+            .ToListAsync();
+    }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "policies/get")]
     [HttpGet]
@@ -31,19 +41,34 @@ public class PoliciesController : IdentityController
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "policies/findByName")]
     [HttpGet]
     [Route("findByName")]
-    public async Task<List<Policy>> FindByName(string name)
+    public async Task<List<Policy>> FindByNameAsync(int pageSize, int pageIndex, string name)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (pageSize <= 0 || pageIndex < 0 || string.IsNullOrWhiteSpace(name))
             return new List<Policy>();
 
-        return await _identityContext.Policies.Where(policy => policy.Name.ToUpper().Contains(name.Trim().ToUpper())).ToListAsync();
+        return await _identityContext.Policies
+            .OrderBy(x => x.Id)
+            .Where(policy => policy.Name.ToUpper().Contains(name.Trim().ToUpper()))
+            .Skip(pageSize * pageIndex)
+            .Take(pageSize)
+            .ToListAsync();
     }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "policies/getInRange")]
     [HttpGet]
     [Route("getInRange")]
-    public async Task<IEnumerable<Policy>> GetInRange(int minAccessLevel, int maxAccessLevel) =>
-        await _identityContext.Policies.Where(policy => policy.MinimumAccessLevel >= minAccessLevel && policy.MinimumAccessLevel <= maxAccessLevel).ToListAsync();
+    public async Task<IEnumerable<Policy>> GetInRangeAsync(int pageSize, int pageIndex, int minAccessLevel, int maxAccessLevel)
+    {
+        if (pageSize <= 0 || pageIndex < 0)
+            return new List<Policy>();
+
+        return await _identityContext.Policies
+            .OrderBy(x => x.Id)
+            .Where(policy => policy.MinimumAccessLevel >= minAccessLevel && policy.MinimumAccessLevel <= maxAccessLevel)
+            .Skip(pageSize * pageIndex)
+            .Take(pageSize)
+            .ToListAsync();
+    }
 
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "policies/change")]
     [HttpPut]

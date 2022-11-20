@@ -4,29 +4,17 @@ namespace CandleShop.Services.Identity.API.Controllers;
 
 [Route("api/v1/[controller]")]
 [ApiController]
-public class AccountController : ControllerBase
+public class AccountController : IdentityController
 {
-    private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
-    private readonly RoleManager<Role> _roleManager;
     private readonly ITokenCreationService _jwtService;
-    private readonly IConfiguration _configuration;
 
-    public AccountController(
-        UserManager<User> userManager, 
-        SignInManager<User> signInManager, 
-        RoleManager<Role> roleManager, 
-        ITokenCreationService jwtService,
-        IConfiguration configuration)
+    public AccountController(UserManager<User> userManager, RoleManager<Role> roleManager, IConfiguration configuration,
+        SignInManager<User> signInManager, ITokenCreationService jwtService) : base(userManager, roleManager, configuration)
     {
-        _userManager = userManager;
         _signInManager = signInManager;
-        _roleManager = roleManager;
         _jwtService = jwtService;
-        _configuration = configuration;
     }
-
-    #region POST
 
     [HttpPost]
     [Route("register")]
@@ -73,30 +61,4 @@ public class AccountController : ControllerBase
 
         return Ok(token);
     }
-
-    #endregion
-
-    #region GET
-
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "account/all")]
-    [HttpGet]
-    [Route("all")]
-    public async Task<ActionResult<IEnumerable<User>>> GetUsers()
-    {
-        return await _userManager.Users.ToArrayAsync();
-    }
-
-    [Authorize(AuthenticationSchemes = "Bearer")]
-    [HttpGet]
-    [Route("claims")]
-    public List<string> GetClaims () 
-    {
-        List<string> result = new List<string>();
-        foreach (var c in User.Claims)
-            result.Add($"{c.Type} - {c.Value}");
-
-        return result;
-    }
-
-    #endregion
 }

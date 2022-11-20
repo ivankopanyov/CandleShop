@@ -1,3 +1,5 @@
+using CandleShop.Services.Identity.API.Controllers;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -69,7 +71,7 @@ builder.Services
 builder.Services.AddTransient<IAuthorizationHandler, AccessHandler>();
 
 var policies = Assembly.GetExecutingAssembly().GetTypes()
-    .Where(type => typeof(ControllerBase).IsAssignableFrom(type))
+    .Where(type => typeof(IdentityController).IsAssignableFrom(type))
     .SelectMany(type => type.GetMethods())
     .Where(method => method.IsDefined(typeof(AuthorizeAttribute)))
     .Select(method => ((AuthorizeAttribute)method.GetCustomAttributes().First(attr => attr.GetType() == typeof(AuthorizeAttribute))).Policy)

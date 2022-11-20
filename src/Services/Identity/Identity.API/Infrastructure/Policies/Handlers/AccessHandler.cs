@@ -1,6 +1,4 @@
-﻿using System.Security.Claims;
-
-namespace CandleShop.Services.Identity.API.Infrastructure.Policies.Handlers;
+﻿namespace CandleShop.Services.Identity.API.Infrastructure.Policies.Handlers;
 
 public class AccessHandler : AuthorizationHandler<AccessRequirement>
 {

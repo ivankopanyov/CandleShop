@@ -1,4 +1,6 @@
-﻿namespace CandleShop.Services.Identity.API.Controllers;
+﻿using Microsoft.AspNetCore.Identity;
+
+namespace CandleShop.Services.Identity.API.Controllers;
 
 [Route("api/v1/[controller]")]
 [ApiController]
@@ -9,19 +11,6 @@ public class AccountController : ControllerBase
     private readonly RoleManager<Role> _roleManager;
     private readonly ITokenCreationService _jwtService;
     private readonly IConfiguration _configuration;
-
-    private int? AccessLevel
-    {
-        get
-        {
-            var roleClaim = User.FindFirst(c => c.Type == ClaimTypes.Role && c.Issuer == _configuration["Jwt:Issuer"]);
-
-            if (roleClaim == null || !int.TryParse(roleClaim.Value, out int accessLevel))
-                return null;
-
-            return accessLevel;
-        }
-    }
 
     public AccountController(
         UserManager<User> userManager, 
@@ -97,10 +86,17 @@ public class AccountController : ControllerBase
         return await _userManager.Users.ToArrayAsync();
     }
 
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "account/accessLevel")]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     [HttpGet]
-    [Route("accessLevel")]
-    public int? GetAccessLevel() => AccessLevel;
+    [Route("claims")]
+    public List<string> GetClaims () 
+    {
+        List<string> result = new List<string>();
+        foreach (var c in User.Claims)
+            result.Add($"{c.Type} - {c.Value}");
+
+        return result;
+    }
 
     #endregion
 }

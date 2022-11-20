@@ -22,7 +22,7 @@ public class AccessHandler : AuthorizationHandler<AccessRequirement>
 
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, AccessRequirement requirement)
     {
-        var idClaim = context.User.FindFirst(c => c.Type == ClaimTypes.Sid && c.Issuer == _configuration["Jwt:Issuer"]);
+        var idClaim = context.User.FindFirst(c => c.Type == ClaimTypes.NameIdentifier);
         if (idClaim == null)
             return Task.CompletedTask;
 

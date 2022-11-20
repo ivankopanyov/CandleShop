@@ -20,7 +20,7 @@ public class PoliciesController : IdentityController
             return new List<Policy>();
 
         return await _identityContext.Policies
-            .OrderBy(x => x.Id)
+            .OrderBy(policy => policy.Id)
             .Skip(pageSize * pageIndex)
             .Take(pageSize)
             .ToListAsync();
@@ -35,17 +35,19 @@ public class PoliciesController : IdentityController
         return policy == null ? NotFound() : Ok(policy);
     }
 
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "policies/findByName")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "policies/find")]
     [HttpGet]
-    [Route("findByName")]
-    public async Task<List<Policy>> FindByNameAsync(int pageSize, int pageIndex, string name)
+    [Route("find")]
+    public async Task<List<Policy>> FindAsync(int pageSize, int pageIndex, string pattern)
     {
-        if (pageSize <= 0 || pageIndex < 0 || string.IsNullOrWhiteSpace(name))
+        if (pageSize <= 0 || pageIndex < 0 || string.IsNullOrWhiteSpace(pattern))
             return new List<Policy>();
 
+        pattern = pattern.Trim().ToUpper();
+
         return await _identityContext.Policies
-            .OrderBy(x => x.Id)
-            .Where(policy => policy.Name.ToUpper().Contains(name.Trim().ToUpper()))
+            .OrderBy(policy => policy.Id)
+            .Where(policy => policy.Name.ToUpper().Contains(pattern))
             .Skip(pageSize * pageIndex)
             .Take(pageSize)
             .ToListAsync();
@@ -60,7 +62,7 @@ public class PoliciesController : IdentityController
             return new List<Policy>();
 
         return await _identityContext.Policies
-            .OrderBy(x => x.Id)
+            .OrderBy(policy => policy.Id)
             .Where(policy => policy.MinimumAccessLevel >= minAccessLevel && policy.MinimumAccessLevel <= maxAccessLevel)
             .Skip(pageSize * pageIndex)
             .Take(pageSize)

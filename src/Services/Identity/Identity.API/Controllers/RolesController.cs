@@ -40,7 +40,7 @@ public class RolesController : IdentityController
             return new List<Role>();
 
         return await _roleManager.Roles
-            .OrderBy(x => x.Id)
+            .OrderBy(role => role.Id)
             .Skip(pageSize * pageIndex)
             .Take(pageSize)
             .ToListAsync();
@@ -58,17 +58,19 @@ public class RolesController : IdentityController
         return role == null ? NotFound() : Ok(role);
     }
 
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/findByName")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/find")]
     [HttpGet]
-    [Route("findByName")]
-    public async Task<List<Role>> FindByNameAsync(int pageSize, int pageIndex, string name)
+    [Route("find")]
+    public async Task<List<Role>> FindAsync(int pageSize, int pageIndex, string pattern)
     {
-        if (pageSize <= 0 || pageIndex < 0 || string.IsNullOrWhiteSpace(name))
+        if (pageSize <= 0 || pageIndex < 0 || string.IsNullOrWhiteSpace(pattern))
             return new List<Role>();
 
+        pattern = pattern.Trim().ToUpper();
+
         return await _roleManager.Roles
-            .OrderBy(x => x.Id)
-            .Where(role => role.NormalizedName.Contains(name.Trim().ToUpper()))
+            .OrderBy(role => role.Id)
+            .Where(role => role.NormalizedName.Contains(pattern))
             .Skip(pageSize * pageIndex)
             .Take(pageSize)
             .ToListAsync();
@@ -83,7 +85,7 @@ public class RolesController : IdentityController
             return new List<Role>();
 
         return await _roleManager.Roles
-            .OrderBy(x => x.Id)
+            .OrderBy(role => role.Id)
             .Where(role => role.AccessLevel >= minAccessLevel && role.AccessLevel <= maxAccessLevel)
             .Skip(pageSize * pageIndex)
             .Take(pageSize)

@@ -15,7 +15,7 @@ public class RolesController : IdentityController
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest();
 
-        int userAccessLevel = await GetAccessLevelAsync();
+        int userAccessLevel = await GetCurrentUserAccessLevelAsync();
 
         if (accessLevel <= 0)
             return BadRequest();
@@ -31,8 +31,8 @@ public class RolesController : IdentityController
         return Ok();
     }
 
-    [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/items")]
     [HttpGet]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "roles/items")]
     [Route("items")]
     public async Task<List<Role>> ItemsAsync(int pageSize, int pageIndex)
     {
@@ -98,14 +98,14 @@ public class RolesController : IdentityController
         if (string.IsNullOrWhiteSpace(role.Id) || string.IsNullOrWhiteSpace(role.Name) || role.AccessLevel < 1)
             return BadRequest();
 
-        int accessLevel = await GetAccessLevelAsync();
+        int accessLevel = await GetCurrentUserAccessLevelAsync();
 
         Role roleEntity = (await _roleManager.Roles.FirstOrDefaultAsync(r => r.Id == role.Id))!;
 
         if (roleEntity == null)
             return NotFound();
 
-        int max = AccessLevelMax;
+        int max = await GetAccessLevelMaxAsync();
         IdentityResult result;
         
         if (roleEntity.AccessLevel >= accessLevel)
@@ -114,10 +114,12 @@ public class RolesController : IdentityController
             {
                 if (roleEntity.AccessLevel == max)
                 {
-                    int secondMax = 0;
-                    foreach (var level in AccessLevels)
-                        if (level > secondMax && level < max)
-                            secondMax = level;
+                    var secondRole = await _roleManager.Roles
+                        .OrderByDescending(role => role.AccessLevel)
+                        .Skip(1)
+                        .FirstOrDefaultAsync();
+
+                    int secondMax = secondRole == null ? 0 : secondRole.AccessLevel;
 
                     if (role.AccessLevel <= secondMax)
                         return BadRequest();
@@ -135,7 +137,7 @@ public class RolesController : IdentityController
             else if (roleEntity.AccessLevel > accessLevel)
                 return NotFound();
 
-            var userRoles = await GetRolesAsync();
+            var userRoles = await GetCurrentUserRolesAsync();
 
             return userRoles.Contains(role.Name) ? Forbid() : NotFound();
 
@@ -158,14 +160,14 @@ public class RolesController : IdentityController
         if (string.IsNullOrWhiteSpace(id))
             return BadRequest();
 
-        int accessLevel = await GetAccessLevelAsync();
+        int accessLevel = await GetCurrentUserAccessLevelAsync();
 
         var role = await _roleManager.Roles.FirstOrDefaultAsync(role => role.Id == id);
 
         if (role == null)
             return NotFound();
 
-        var max = AccessLevelMax;
+        var max = await GetAccessLevelMaxAsync();
 
         if (role.AccessLevel == max)
             return accessLevel == max ? BadRequest() : NotFound();
@@ -175,9 +177,7 @@ public class RolesController : IdentityController
 
         if (role.AccessLevel == accessLevel)
         {
-            var user = await _userManager.GetUserAsync(User);
-            var userRoles = (await _userManager.GetRolesAsync(user)).ToHashSet();
-
+            var userRoles = await GetCurrentUserRolesAsync();
             return userRoles.Contains(role.Name) ? Forbid() : NotFound();
         }
 

@@ -31,9 +31,6 @@ public class PoliciesController : IdentityController
     [Route("get")]
     public async Task<ActionResult<Policy>> GetAsync(int id)
     {
-        if (id <= 0)
-            return NotFound();
-
         var policy = await _identityContext.Policies.FirstOrDefaultAsync(policy => policy.Id == id);
         return policy == null ? NotFound() : Ok(policy);
     }
@@ -75,32 +72,25 @@ public class PoliciesController : IdentityController
     [Route("change")]
     public async Task<ActionResult> ChangeAsync(PolicyDto policy)
     {
-        if (policy.Id <= 0)
-            return NotFound();
-
         if (policy.MinimumAccessLevel < 0)
             return BadRequest();
 
-        int accessLevel = await GetAccessLevelAsync();
+        int accessLevel = await GetCurrentUserAccessLevelAsync();
 
         Policy policyEntity = (await _identityContext.Policies.FirstOrDefaultAsync(p => p.Id == policy.Id))!;
         if (policyEntity == null)
             return NotFound();
 
-        int max = AccessLevelMax;
+        int max = await GetAccessLevelMaxAsync();
         if (accessLevel == max)
         {
             if (policy.MinimumAccessLevel > accessLevel)
                 return BadRequest();
         }
-        else
-        {
-            if (policyEntity.MinimumAccessLevel > accessLevel)
-                return NotFound();
-
-            if (policy.MinimumAccessLevel > accessLevel)
-                return BadRequest();
-        }
+        else if (policyEntity.MinimumAccessLevel > accessLevel)
+            return NotFound();
+        else if (policy.MinimumAccessLevel > accessLevel)
+            return BadRequest();
 
         policyEntity.MinimumAccessLevel = policy.MinimumAccessLevel;
         _identityContext.Policies.Update(policyEntity);

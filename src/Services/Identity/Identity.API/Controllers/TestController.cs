@@ -34,6 +34,21 @@ public class TestController : IdentityController
             .ToListAsync();
     }
 
+    [HttpGet]
+    [Route("policies")]
+    public async Task<ActionResult<Policy>> GetPolicy(int index)
+    {
+        if (index < 0)
+            index = 0;
+
+        var policy = await _identityContext.Policies
+            .OrderByDescending(policy => policy.Id)
+            .Skip(index)
+            .FirstOrDefaultAsync();
+
+        return policy == null ? NotFound() : Ok(policy);
+    }
+
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "test/allClaims")]
     [HttpGet]
     [Route("allClaims")]

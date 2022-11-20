@@ -1,5 +1,3 @@
-using CandleShop.Services.Identity.API.Controllers;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -91,9 +89,9 @@ using (var client = new IdentityContext(app.Configuration))
     client.Database.EnsureDeleted();
     client.Database.EnsureCreated();
 
-    foreach (var policy in client.Policies)
-        if (!policies.Contains(policy.Name))
-            client.Policies.Remove(policy);
+    await client.Policies
+        .Where(policy => !policies.Contains(policy.Name))
+        .ForEachAsync(policy => client.Policies.Remove(policy));
 
     int maxAccessLevel = 0;
 
@@ -104,7 +102,7 @@ using (var client = new IdentityContext(app.Configuration))
         {
             maxAccessLevel = 1;
             var roleName = "Supervisor";
-            roleManager.CreateAsync(new Role(roleName, maxAccessLevel));
+            await roleManager.CreateAsync(new Role(roleName, maxAccessLevel));
             var userManager = (UserManager<User>)scope.ServiceProvider.GetService(typeof(UserManager<User>))!;
             var user = new User()
             {
@@ -112,8 +110,8 @@ using (var client = new IdentityContext(app.Configuration))
                 Email = "supervisor@candleshop.com"
             };
 
-            userManager.CreateAsync(user, "supervisor");
-            userManager.AddToRolesAsync(user, new[] { roleName });
+            await userManager.CreateAsync(user, "supervisor");
+            await userManager.AddToRolesAsync(user, new[] { roleName });
         }
         else
         {

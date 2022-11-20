@@ -1,16 +1,12 @@
-﻿namespace CandleShop.Services.Identity.API.Controllers;
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace CandleShop.Services.Identity.API.Controllers;
 
 public class IdentityController : ControllerBase
 {
     protected readonly UserManager<User> _userManager;
     protected readonly RoleManager<Role> _roleManager;
     protected readonly IConfiguration _configuration;
-
-    protected HashSet<int> AccessLevels => _roleManager.Roles.Select(role => role.AccessLevel).ToHashSet();
-
-    protected int AccessLevelMin => AccessLevels.Min();
-
-    protected int AccessLevelMax => AccessLevels.Max();
 
     public IdentityController(UserManager<User> userManager, RoleManager<Role> roleManager, IConfiguration configuration)
     {
@@ -29,23 +25,45 @@ public class IdentityController : ControllerBase
         return await _userManager.Users.FirstOrDefaultAsync(user => user.Id == idClaim.Value);
     }
 
-    protected async Task<IList<string>> GetRolesAsync()
+    protected async Task<HashSet<string>> GetCurrentUserRolesAsync()
     {
         var user = await GetCurrentUserAsync();
         if (user == null)
-            return Array.Empty<string>();
+            return new HashSet<string>();
 
-        return await _userManager.GetRolesAsync(user);
+        return (await _userManager.GetRolesAsync(user)).ToHashSet();
     }
 
-    protected async Task<int> GetAccessLevelAsync()
+    protected async Task<int> GetCurrentUserAccessLevelAsync()
     {
-        HashSet<string> rolesNames = (await GetRolesAsync()).ToHashSet();
-        HashSet<int> accessLevels = new HashSet<int>() { 0 };
-        await _roleManager.Roles.ForEachAsync(role => {
-            if (rolesNames.Contains(role.Name))
-                accessLevels.Add(role.AccessLevel);
-        });
-        return accessLevels.Max();
+        HashSet<string> rolesNames = await GetCurrentUserRolesAsync();
+
+        if (rolesNames.Count == 0)
+            return 0;
+
+        var role = await _roleManager.Roles
+            .Where(role => rolesNames.Contains(role.Name))
+            .OrderByDescending(role => role.AccessLevel)
+            .FirstAsync();
+            
+        return role == null ? 0 : role.AccessLevel;
+    }
+
+    protected async Task<int> GetAccessLevelMinAsync()
+    {
+        var role = await _roleManager.Roles
+            .OrderBy(role => role.AccessLevel)
+            .FirstOrDefaultAsync();
+
+        return role == null ? 0 : role.AccessLevel;
+    }
+
+    protected async Task<int> GetAccessLevelMaxAsync()
+    {
+        var role = await _roleManager.Roles
+            .OrderByDescending(role => role.AccessLevel)
+            .FirstOrDefaultAsync();
+
+        return role == null ? 0 : role.AccessLevel;
     }
 }
